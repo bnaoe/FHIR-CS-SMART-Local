@@ -1,5 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using System;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using System.Linq;
 
 namespace smart_local
 {
@@ -34,10 +37,65 @@ namespace smart_local
             }
             
             System.Console.WriteLine($"Authorize URL : {authorizeUrl}");
+            
             System.Console.WriteLine($"    Token URL : {tokenUrl}");
 
+            Task.Run(() => CreateHostBuilder().Build().Run());
+            
+            int listeningPort = GetListenPort().Result;
+
+            System.Console.WriteLine($" Listening on : {listeningPort}");
+
+            for (int loops = 0; loops < 5; loops++)
+            {
+                System.Threading.Thread.Sleep(1000);
+            }
             return 0;
         }
+
+        /// <summary>
+        /// Determine the listerning port for the webserver
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<int> GetListenPort()
+        {
+            for (int loops = 0; loops < 100; loops++)
+            {
+                await Task.Delay(100);
+                
+                if(Startup.Addresses == null)
+                {
+                    continue;
+                }
+                string address = Startup.Addresses.Addresses.FirstOrDefault();
+
+                if (string.IsNullOrEmpty(address))
+                {
+                    continue;
+                }
+
+                if(address.Length < 18)
+                {
+                    continue;
+                }
+
+                if (int.TryParse(address.Substring(17), out int port) && port != 0)
+                {
+                    return port;    
+                }
+            }
+            throw new Exception($"Failed to get a listening port!");
+        }
+
+         public static IHostBuilder CreateHostBuilder() =>
+            Host.CreateDefaultBuilder()
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseUrls("http://127.0.0.1:0");
+                    webBuilder.UseKestrel();
+                    webBuilder.UseStartup<Startup>();
+                });
+
     }
 }
 
